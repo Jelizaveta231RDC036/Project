@@ -52,7 +52,7 @@ def calculate_total_stats():
     return total_stats
 
 while True:
-    name = input("Ievadiet darbinieka vārdu (vai rakstiet 'exit', lai pabeigtu): ")
+    name = input("Ievadiet darbinieka vārdu (OBLIGĀTI UZRAKSTIET 'EXIT' DARBA NOBEIGUMĀ, lai pabeigtu un PIEFIKSĒTU datus): ")
 
     if name.lower() == 'exit':
         break
