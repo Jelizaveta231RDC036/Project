@@ -1,0 +1,92 @@
+import pandas as pd
+import datetime
+import os
+
+# Norādiet ceļu, kur vēlaties saglabāt Excel failu ar ievadītajiem datiem
+file_path = r'C:\(norādiet ceļu)\employee_working_sessions.xlsx'
+
+# Pārbauda, vai šis Excel fails jau ir izveidots, lai neizveidotu dublikātus vai ko līdzīgu. Ja fails nav izveidots - veido.
+if not os.path.exists(file_path):
+    df = pd.DataFrame(columns=['Vārds', 'Uzvārds', 'Sākuma laiks', 'Beigu laiks', 'Kopējais laiks', 'Stundas likme', 'Alga'])
+else:
+    df = pd.read_excel(file_path)
+
+# Izveido sarakstu, kur glabāsies dati par darbu
+working_sessions = []
+
+# Norādiet funkciju, lai ierakstītu darba sesijas sākuma laiku
+def record_start_time(name, surname):
+    for session in working_sessions:
+        if session['Vārds'] == name and session['Uzvārds'] == surname and session['Beigu laiks'] is None:
+            print("Darba sesija jau ir sākusies, lūdzu, pabeidziet pašreizējo darbu.")
+            return None
+
+    start_time = datetime.datetime.now()
+    print(f"Darbinieks {name} {surname} ir sācis strādāt plkst: {start_time}")
+    return start_time
+
+# Norādiet funkciju, lai ierakstītu darba sesijas beigu laiku un aprēķinātu kopējo laiku
+def record_end_time(name, surname, start_time):
+    end_time = datetime.datetime.now()
+    total_time = end_time - start_time
+    alga = total_time.total_seconds() / 3600 * 10
+
+    print(f"Darbinieks {name} {surname} ir strādājis {total_time}.")
+    print(f"Alga par šodienu: {alga} EUR")
+    print("Paldies par Jūsu darbu!")
+
+    return end_time
+
+# Norādiet funkciju, lai aprēķinātu kopējo darba laiku un kopējo atalgojumu katram darbiniekam
+def calculate_total_stats():
+    total_stats = {}
+    
+    for session in working_sessions:
+        if session['Beigu laiks'] is not None:
+            name = session['Vārds']
+            surname = session['Uzvārds']
+            total_stats.setdefault((name, surname), {'Kopējais laiks': datetime.timedelta(), 'Kopējā alga': 0})
+            total_stats[(name, surname)]['Kopējais laiks'] += session['Beigu laiks'] - session['Sākuma laiks']
+            total_stats[(name, surname)]['Kopējā alga'] += (session['Beigu laiks'] - session['Sākuma laiks']).total_seconds() / 3600 * 10
+    
+    return total_stats
+
+while True:
+    name = input("Ievadiet darbinieka vārdu (vai rakstiet 'exit', lai pabeigtu): ")
+
+    if name.lower() == 'exit':
+        break
+
+    surname = input("Ievadiet darbinieka uzvārdu: ")
+    action = input("Ievadiet 1, lai sāktu darba sesiju, 2, lai beigtu darba sesiju: ")
+
+    if action == '1':
+        start_time = record_start_time(name, surname)
+        if start_time is not None:
+            working_sessions.append({'Vārds': name, 'Uzvārds': surname, 'Sākuma laiks': start_time, 'Beigu laiks': None})
+    elif action == '2':
+        index = next((i for i, session in enumerate(working_sessions) if session['Vārds'] == name and session['Uzvārds'] == surname and session['Beigu laiks'] is None), None)
+        if index is not None:
+            end_time = record_end_time(name, surname, working_sessions[index]['Sākuma laiks'])
+            working_sessions[index]['Beigu laiks'] = end_time
+        else:
+            print("Kļūda: Lūdzu, sāciet jaunu darba sesiju pirms pašreizējās beigām.")
+    else:
+        print("Nederīgs ievads. Lūdzu, ievadiet 1, lai sāktu, vai 2, lai beigtu darba sesiju.")
+
+# Pārveidojiet sarakstu par DataFrame
+new_data_df = pd.DataFrame(working_sessions)
+
+# Pievienojiet jaunus datus esošajam DataFrame
+df = pd.concat([df, new_data_df], ignore_index=True)
+
+# Sakārtojiet DataFrame pēc 'Vārda', 'Uzvārda' un 'Sākuma laika'
+df.sort_values(by=['Vārds', 'Uzvārds', 'Sākuma laiks'], inplace=True)
+
+# Aprēķiniet kopējo laiku un atalgojumu
+df['Kopējais laiks'] = df['Beigu laiks'] - df['Sākuma laiks']
+df['Stundas likme'] = 10
+df['Alga'] = df['Kopējais laiks'] * df['Stundas likme']
+
+# Ierakstiet DataFrame Excel failā uz darbvirsmas
+df.to_excel(file_path, index=False)
